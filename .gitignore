@@ -1,3 +1,6 @@
+# Project Specific
+data/       # Ignore data directory
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
