@@ -1,8 +1,6 @@
 # Project Specific
-data/       # Ignore data directory
-csv/        # Ignore CSV file folder
-
-
+data/
+csv/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
