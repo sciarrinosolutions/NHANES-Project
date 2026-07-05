@@ -15,3 +15,9 @@ To run, navigate to the NHANES_Explorer folder and run:
 
 ```python manage.py runserver```
 
+## Data Cleaning
+
+Converts nhanes_all.csv into nhanes_all_processed.csv after performing various data cleaning and feature engineering operations.
+
+## Exploratory Data Analysis
+
