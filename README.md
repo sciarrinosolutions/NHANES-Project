@@ -1,7 +1,11 @@
 # NHANES-Project
 Analysis of NHANES datasets, supplementary applications, ML Model Development and Evaluation, and Django Web Application for Blood Screening Recommendation System
 
-Data Downloaded from CDC website, available in the Google Drive folder [here](https://drive.google.com/drive/folders/1x93sOFpR4IGW7YT4ZFQKV5mDLOO2AVch?usp=drive_link).
+To run the web app, navigate to ```Web Application/bloodwork_project``` and run the command ```python manage.py runserver```. 
+
+## Data
+
+Data was downloaded from CDC website as SAS .xpt files, available in the Google Drive folder [here](https://drive.google.com/drive/folders/1x93sOFpR4IGW7YT4ZFQKV5mDLOO2AVch?usp=drive_link).
 
 ## CSV Conversion
 
@@ -14,10 +18,4 @@ A Django application that helps navigate the NHANES codebook with fuzzy search. 
 To run, navigate to the NHANES_Explorer folder and run:
 
 ```python manage.py runserver```
-
-## Data Cleaning
-
-Converts nhanes_all.csv into nhanes_all_processed.csv after performing various data cleaning and feature engineering operations.
-
-## Exploratory Data Analysis
 

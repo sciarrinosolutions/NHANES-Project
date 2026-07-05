@@ -1,0 +1,287 @@
+{% extends 'survey/base.html' %}
+{% block title %}Your Results — Bloodwork Screening Tool{% endblock %}
+
+{% block content %}
+<style>
+    .results-layout {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        gap: 1.5rem;
+        max-width: 1100px;
+        margin: 0 auto;
+        align-items: start;
+    }
+
+    .answers-sidebar { position: sticky; top: 1.5rem; }
+    .answers-sidebar .card { padding: 1.1rem; }
+    .answers-sidebar h3 {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted);
+        margin-bottom: 0.85rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .answer-list { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+    .answer-item { font-size: 0.82rem; line-height: 1.4; }
+    .answer-label { font-weight: 600; color: var(--navy); display: block; margin-bottom: 0.1rem; }
+    .answer-value { color: var(--muted); }
+
+    .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .results-header h1 { font-size: 1.5rem; font-weight: 700; color: var(--navy); }
+    .results-header .subhead { font-size: 0.88rem; color: var(--muted); margin-top: 0.25rem; }
+    .results-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+    .result-card { border: 2px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1.25rem; }
+    .result-card.recommend    { border-color: #d9534f; }
+    .result-card.no-recommend { border-color: #3a9c6a; }
+    .result-card.placeholder  { border-color: #c0aa40; }
+
+    .result-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.4rem;
+        border-bottom: 1px solid var(--border);
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .result-card.recommend    .result-card-header { background: var(--red-lite); }
+    .result-card.no-recommend .result-card-header { background: var(--green-lite); }
+    .result-card.placeholder  .result-card-header { background: var(--amber-lite); }
+
+    .result-test-name { font-size: 1.1rem; font-weight: 700; color: var(--navy); }
+    .result-test-full { font-size: 0.8rem; color: var(--muted); margin-top: 0.1rem; }
+
+    .result-badge {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.35rem 0.85rem; border-radius: 99px;
+        font-size: 0.82rem; font-weight: 600;
+    }
+    .badge-recommend    { background: #fce8e8; color: var(--red);   border: 1px solid #f0b8b8; }
+    .badge-no-recommend { background: #dff2e9; color: var(--green); border: 1px solid #a8d9bf; }
+    .badge-placeholder  { background: var(--amber-lite); color: var(--amber); border: 1px solid #e0c060; }
+
+    .result-card-body { padding: 1.25rem 1.4rem; }
+
+    .result-summary { display: flex; gap: 1.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .result-summary p { font-size: 0.9rem; color: var(--text); flex: 1; min-width: 200px; line-height: 1.6; }
+
+    .prob-section { min-width: 200px; }
+    .prob-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; }
+    .prob-label { font-size: 0.78rem; color: var(--muted); width: 100px; flex-shrink: 0; }
+    .prob-bar-bg { flex: 1; background: #e8edf5; border-radius: 4px; height: 12px; overflow: hidden; }
+    .prob-bar-fill { height: 100%; border-radius: 4px; }
+    .bar-risk       { background: var(--red); }
+    .bar-protective { background: var(--green); }
+    .prob-pct { font-size: 0.82rem; font-weight: 700; width: 38px; text-align: right; color: var(--text); }
+
+    .contributions-section { margin-top: 1rem; }
+    .contributions-title {
+        font-size: 0.8rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        color: var(--muted); margin-bottom: 0.75rem;
+        padding-bottom: 0.4rem; border-bottom: 1px solid var(--border);
+    }
+    .contrib-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .contrib-item { display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; }
+    .contrib-label { width: 175px; flex-shrink: 0; color: var(--text); }
+    .contrib-bar-container { flex: 1; display: flex; align-items: center; gap: 0.4rem; height: 16px; }
+    .contrib-bar-bg { flex: 1; height: 10px; background: #eaeef5; border-radius: 5px; position: relative; overflow: hidden; }
+    .contrib-bar-fill { position: absolute; height: 100%; border-radius: 5px; top: 0; }
+    .contrib-bar-fill.risk       { background: #e07070; left: 50%; }
+    .contrib-bar-fill.protective { background: #5aac80; right: 50%; }
+    .contrib-direction { font-size: 0.72rem; font-weight: 600; width: 72px; flex-shrink: 0; text-align: right; }
+    .contrib-direction.risk       { color: var(--red); }
+    .contrib-direction.protective { color: var(--green); }
+
+    .placeholder-notice {
+        display: flex; align-items: flex-start; gap: 0.6rem;
+        padding: 0.7rem 1rem; background: var(--amber-lite);
+        border: 1px solid #e0c060; border-radius: 6px;
+        font-size: 0.82rem; color: #5a4200; margin-bottom: 1rem;
+    }
+
+    @media (max-width: 680px) {
+        .results-layout {
+            grid-template-columns: 1fr;
+        }
+        .answers-sidebar {
+            position: static;
+            order: 2;
+        }
+        .results-panel {
+            order: 1;
+        }
+        .result-summary {
+            flex-direction: column;
+        }
+        .contrib-label { width: 120px; font-size: 0.78rem; }
+        .contrib-direction { width: 60px; font-size: 0.68rem; }
+        .result-card-header { flex-direction: column; align-items: flex-start; }
+        .results-header { flex-direction: column; }
+        .results-actions { width: 100%; }
+        .results-actions .btn { flex: 1; text-align: center; }
+    }
+
+    @media print {
+        .results-layout { grid-template-columns: 190px 1fr; gap: 1rem; }
+        .answers-sidebar { position: static; }
+        .results-actions, .no-print { display: none !important; }
+        .result-card { page-break-inside: avoid; border: 1px solid #ccc !important; }
+        .result-card-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { font-size: 10pt; }
+    }
+</style>
+
+<div class="results-layout">
+
+    <aside class="answers-sidebar">
+        <div class="card">
+            <h3>Your Responses</h3>
+            {% if answers_summary %}
+            <ul class="answer-list">
+                {% for item in answers_summary %}
+                <li class="answer-item">
+                    <span class="answer-label">{{ item.label }}</span>
+                    <span class="answer-value">{{ item.answer }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p style="font-size:0.82rem; color:var(--muted);">No responses recorded.</p>
+            {% endif %}
+        </div>
+    </aside>
+
+    <div class="results-panel">
+
+        <div class="results-header">
+            <div>
+                <h1>Your Screening Results</h1>
+                <div class="subhead">Based on your survey responses. Share these results with your doctor.</div>
+            </div>
+            <div class="results-actions no-print">
+                <button onclick="window.print()" class="btn btn-outline">&#128438; Print Results</button>
+                <a href="{% url 'index' %}" class="btn btn-ghost">&#8592; Take Survey Again</a>
+            </div>
+        </div>
+
+        {% for result in results %}
+        <div class="result-card {% if result.is_placeholder %}placeholder{% elif result.recommend %}recommend{% else %}no-recommend{% endif %}">
+
+            <div class="result-card-header">
+                <div>
+                    <div class="result-test-name">{{ result.full_label }}</div>
+                    <div class="result-test-full">{{ result.description }}</div>
+                </div>
+                <span class="result-badge {% if result.is_placeholder %}badge-placeholder{% elif result.recommend %}badge-recommend{% else %}badge-no-recommend{% endif %}">
+                    {% if result.is_placeholder %}
+                        &#9888; Placeholder model
+                    {% elif result.recommend %}
+                        &#9888; Consider asking your doctor
+                    {% else %}
+                        &#10003; No action suggested
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="result-card-body">
+
+                {% if result.is_placeholder %}
+                <div class="placeholder-notice">
+                    <strong>Note:</strong>&nbsp;
+                    This result is from a placeholder model and is not clinically meaningful.
+                    A trained model file will be loaded here when available.
+                </div>
+                {% endif %}
+
+                <div class="result-summary">
+                    <p>
+                        {% if result.recommend %}
+                            Based on your responses, this model estimates a
+                            <strong>{{ result.prob_high }}% probability</strong> of abnormal
+                            {{ result.label }} levels. This suggests it may be worth asking
+                            your doctor whether the {{ result.label }} blood test is right for you.
+                        {% else %}
+                            Based on your responses, this model estimates a
+                            <strong>{{ result.prob_normal }}% probability</strong> of normal
+                            {{ result.label }} levels. Your current responses do not suggest
+                            a strong need for this test, though your doctor has the final word.
+                        {% endif %}
+                    </p>
+
+                    <div class="prob-section">
+                        <div class="prob-row">
+                            <div class="prob-label">Abnormal risk</div>
+                            <div class="prob-bar-bg">
+                                <div class="prob-bar-fill bar-risk" style="width:{{ result.prob_high }}%"></div>
+                            </div>
+                            <div class="prob-pct">{{ result.prob_high }}%</div>
+                        </div>
+                        <div class="prob-row">
+                            <div class="prob-label">Normal range</div>
+                            <div class="prob-bar-bg">
+                                <div class="prob-bar-fill bar-protective" style="width:{{ result.prob_normal }}%"></div>
+                            </div>
+                            <div class="prob-pct">{{ result.prob_normal }}%</div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if result.contributions %}
+                <div class="contributions-section">
+                    <div class="contributions-title">Top contributing factors</div>
+                    <div class="contrib-list">
+                        {% for c in result.contributions %}
+                        <div class="contrib-item">
+                            <div class="contrib-label">{{ c.label }}</div>
+                            <div class="contrib-bar-container">
+                                <div class="contrib-bar-bg">
+                                    <div class="contrib-bar-fill {{ c.direction }}"
+                                         style="width:{{ c.pct }}%; min-width: 4px; max-width: 50%;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contrib-direction {{ c.direction }}">
+                                {% if c.direction == 'risk' %}&#8593; Risk factor
+                                {% else %}&#8595; Protective{% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="card no-print" style="margin-top:1.5rem; font-size:0.85rem; color:var(--muted); line-height:1.7;">
+            <strong style="color:var(--text);">Important disclaimer:</strong>
+            These results are generated by machine learning models trained on population-level survey data
+            (NHANES) and are intended for informational purposes only. They do not constitute medical advice,
+            diagnosis, or treatment. Always consult a qualified healthcare provider before making any
+            decisions about your health or medical tests.
+            No personal data was collected, stored, or transmitted during this session.
+        </div>
+
+        <div class="results-actions no-print" style="margin-top:1rem; justify-content:flex-end; display:flex; gap:0.6rem;">
+            <button onclick="window.print()" class="btn btn-outline">&#128438; Print Results</button>
+            <a href="{% url 'index' %}" class="btn btn-ghost">&#8592; Take Survey Again</a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

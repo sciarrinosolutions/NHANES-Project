@@ -1,0 +1,629 @@
+{% extends 'survey/base.html' %}
+{% block title %}Survey — Bloodwork Screening Tool{% endblock %}
+
+{% block content %}
+<style>
+    .survey-layout {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 1.5rem;
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    /* Progress sidebar */
+    .progress-sidebar {
+        position: sticky;
+        top: 1.5rem;
+        align-self: start;
+    }
+
+    .progress-sidebar .card { padding: 1.1rem; }
+
+    .progress-sidebar h3 {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted);
+        margin-bottom: 0.75rem;
+    }
+
+    .progress-test-list { list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
+
+    .progress-test-item {
+        font-size: 0.85rem;
+        padding: 0.35rem 0.6rem;
+        border-radius: 5px;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .progress-test-item .dot {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        flex-shrink: 0;
+    }
+
+    .question-count {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-top: 1rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .required-note {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-top: 0.5rem;
+    }
+
+    /* Survey form */
+    .survey-form-panel h1 {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--navy);
+        margin-bottom: 0.3rem;
+    }
+
+    .survey-subhead {
+        font-size: 0.88rem;
+        color: var(--muted);
+        margin-bottom: 1.5rem;
+    }
+
+    /* Question blocks */
+    .question-block {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1rem;
+        transition: border-color 0.15s;
+    }
+
+    .question-block:focus-within { border-color: var(--accent); }
+    .question-block.has-error { border-color: var(--red); }
+
+    .question-number {
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--accent);
+        margin-bottom: 0.3rem;
+    }
+
+    .question-text {
+        font-size: 0.97rem;
+        font-weight: 600;
+        color: var(--navy);
+        margin-bottom: 0.3rem;
+    }
+
+    .question-hint {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-bottom: 0.85rem;
+        line-height: 1.5;
+    }
+
+    .field-error {
+        font-size: 0.8rem;
+        color: var(--red);
+        margin-top: 0.4rem;
+    }
+
+    /* Radio options */
+    .radio-list { display: flex; flex-direction: column; gap: 0.4rem; }
+
+    .radio-option {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.55rem 0.85rem;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.88rem;
+        transition: background 0.12s, border-color 0.12s;
+    }
+
+    .radio-option:hover { background: #f0f5fd; border-color: #a8c0e8; }
+
+    .radio-option input[type="radio"] {
+        accent-color: var(--accent);
+        width: 15px; height: 15px;
+        flex-shrink: 0;
+    }
+
+    .radio-option.selected { background: #eef4fd; border-color: var(--accent); }
+
+    /* Number input */
+    .number-field input[type="number"] {
+        padding: 0.55rem 0.85rem;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        width: 140px;
+        transition: border-color 0.15s;
+    }
+
+    .number-field input[type="number"]:focus {
+        outline: none;
+        border-color: var(--accent);
+    }
+
+    /* BMI compound input */
+    .bmi-inputs { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .bmi-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+
+    .bmi-row label { font-size: 0.85rem; color: var(--muted); margin-right: 0.3rem; }
+
+    .bmi-row input[type="number"] {
+        padding: 0.5rem 0.7rem;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        width: 90px;
+        transition: border-color 0.15s;
+    }
+
+    .bmi-row input[type="number"]:focus { outline: none; border-color: var(--accent); }
+
+    .bmi-result {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: #f0f5fd;
+        border: 1.5px solid #c0d4f0;
+        border-radius: 6px;
+        font-size: 0.88rem;
+        color: var(--navy);
+        margin-top: 0.25rem;
+    }
+
+    .bmi-value { font-weight: 700; font-size: 1.05rem; color: var(--accent); }
+    .bmi-category { color: var(--muted); font-size: 0.82rem; }
+
+    /* Unit toggle */
+    .unit-toggle {
+        display: inline-flex;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        margin-bottom: 0.75rem;
+    }
+
+    .unit-toggle button {
+        padding: 0.35rem 0.9rem;
+        font-size: 0.82rem;
+        font-family: inherit;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+    }
+
+    .unit-toggle button.active {
+        background: var(--accent);
+        color: #fff;
+    }
+
+    .unit-toggle button:not(.active):hover { background: #eef3fb; }
+
+    /* BP compound input */
+    .bp-inputs { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
+
+    .bp-field { display: flex; flex-direction: column; gap: 0.3rem; }
+
+    .bp-field label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+
+    .bp-field input[type="number"] {
+        padding: 0.5rem 0.7rem;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        width: 110px;
+        transition: border-color 0.15s;
+    }
+
+    .bp-field input[type="number"]:focus { outline: none; border-color: var(--accent); }
+
+    .bp-sep { font-size: 1.4rem; color: var(--border); align-self: flex-end; padding-bottom: 0.4rem; }
+
+    .map-result {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: #f0f5fd;
+        border: 1.5px solid #c0d4f0;
+        border-radius: 6px;
+        font-size: 0.88rem;
+        color: var(--navy);
+        margin-top: 0.75rem;
+    }
+
+    .map-value { font-weight: 700; font-size: 1.05rem; color: var(--accent); }
+
+    /* Submit bar */
+    .submit-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.25rem 1.5rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-top: 0.5rem;
+    }
+
+    .submit-bar .submit-note { font-size: 0.82rem; color: var(--muted); }
+
+    @media (max-width: 680px) {
+        .survey-layout {
+            grid-template-columns: 1fr;
+        }
+        .progress-sidebar {
+            position: static;
+        }
+        .progress-sidebar .card {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            padding: 0.85rem 1rem;
+        }
+        .progress-sidebar h3 { margin-bottom: 0; width: 100%; }
+        .progress-test-list {
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+        .question-count, .required-note { width: 100%; }
+        .bmi-row { flex-wrap: wrap; }
+        .submit-bar {
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: stretch;
+            text-align: center;
+        }
+        .btn-lg { width: 100%; text-align: center; }
+    }
+</style>
+
+<div class="survey-layout">
+
+    <!-- Progress sidebar -->
+    <aside class="progress-sidebar">
+        <div class="card">
+            <h3>Selected Tests</h3>
+            <ul class="progress-test-list">
+                {% for test in tests %}
+                    {% if test.key in selected_tests %}
+                    <li class="progress-test-item">
+                        <span class="dot"></span>
+                        {{ test.label }}
+                    </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+            <div class="question-count">{{ questions_meta|length }} question{{ questions_meta|length|pluralize }} total</div>
+            <div class="required-note">All fields are required.</div>
+        </div>
+    </aside>
+
+    <!-- Survey form -->
+    <div class="survey-form-panel">
+        <h1>Health and Lifestyle Survey</h1>
+        <p class="survey-subhead">Answer every question as accurately as you can. All fields are required.</p>
+
+        <form method="post" action="{% url 'submit_survey' %}" id="survey-form" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="selected_tests" value="{{ selected_tests_json }}">
+
+            {% for q in questions_meta %}
+            <div class="question-block {% if q.type == 'bmi_inputs' %}{% for fname, field in q.fields.items %}{% if field.errors %}has-error{% endif %}{% endfor %}{% else %}{% if q.field.errors %}has-error{% endif %}{% endif %}" id="block-{{ q.key }}">
+
+                <div class="question-number">Question {{ forloop.counter }}</div>
+                <div class="question-text">{{ q.question }}</div>
+                {% if q.hint %}<div class="question-hint">{{ q.hint }}</div>{% endif %}
+
+                {# --- BMI compound input --- #}
+                {% if q.type == 'bmi_inputs' %}
+                <div class="bmi-inputs">
+
+                    <!-- Unit toggle -->
+                    <div class="unit-toggle">
+                        <button type="button" id="btn-imperial" class="active" onclick="setUnits('imperial')">Imperial (ft / lbs)</button>
+                        <button type="button" id="btn-metric"   onclick="setUnits('metric')">Metric (cm / kg)</button>
+                    </div>
+
+                    <!-- Imperial inputs (default, visible) -->
+                    <div id="imperial-inputs">
+                        <div class="bmi-row">
+                            <label>Height:</label>
+                            <input type="number" id="id_height_ft_display"
+                                   min="3" max="8" placeholder="ft" step="1">
+                            <span style="color:var(--muted); font-size:0.85rem;">ft</span>
+                            <input type="number" id="id_height_in_display"
+                                   min="0" max="11" placeholder="in" step="1">
+                            <span style="color:var(--muted); font-size:0.85rem;">in</span>
+                        </div>
+                        <div class="bmi-row">
+                            <label>Weight:</label>
+                            <input type="number" id="id_weight_lb_display"
+                                   min="50" max="600" placeholder="lbs" step="0.1">
+                            <span style="color:var(--muted); font-size:0.85rem;">lbs</span>
+                        </div>
+                    </div>
+
+                    <!-- Metric inputs (hidden by default) -->
+                    <div id="metric-inputs" style="display:none;">
+                        <div class="bmi-row">
+                            <label>Height:</label>
+                            <input type="number" id="id_height_cm"
+                                   min="91" max="244" placeholder="cm" step="1">
+                            <span style="color:var(--muted); font-size:0.85rem;">cm</span>
+                        </div>
+                        <div class="bmi-row">
+                            <label>Weight:</label>
+                            <input type="number" id="id_weight_kg"
+                                   min="23" max="272" placeholder="kg" step="0.1">
+                            <span style="color:var(--muted); font-size:0.85rem;">kg</span>
+                        </div>
+                    </div>
+
+                    <!-- Hidden fields submitted to backend (always imperial) -->
+                    <input type="hidden" name="height_ft" id="id_height_ft" value="{{ q.fields.height_ft.value|default:'' }}">
+                    <input type="hidden" name="height_in" id="id_height_in" value="{{ q.fields.height_in.value|default:'' }}">
+                    <input type="hidden" name="weight_lb" id="id_weight_lb" value="{{ q.fields.weight_lb.value|default:'' }}">
+
+                    <div class="bmi-result" id="bmi-result">
+                        <span>Your BMI:</span>
+                        <span class="bmi-value" id="bmi-value">—</span>
+                        <span class="bmi-category" id="bmi-category"></span>
+                    </div>
+                </div>
+                {% for fname, field in q.fields.items %}
+                    {% if field.errors %}<div class="field-error">{{ field.errors.0 }}</div>{% endif %}
+                {% endfor %}
+
+                {# --- Radio / binary / season --- #}
+                {% elif q.type == 'radio' or q.type == 'binary_radio' or q.type == 'season' %}
+                <div class="radio-list" id="radio-{{ q.key }}">
+                    {% for value, label in q.choices %}
+                    <label class="radio-option {% if q.field.value == value|stringformat:'s' %}selected{% endif %}">
+                        <input type="radio" name="{{ q.key }}" value="{{ value }}"
+                               {% if q.field.value == value|stringformat:'s' %}checked{% endif %}
+                               required>
+                        {{ label }}
+                    </label>
+                    {% endfor %}
+                </div>
+                {% if q.field.errors %}<div class="field-error">{{ q.field.errors.0 }}</div>{% endif %}
+
+                {# --- Number input --- #}
+                {% elif q.type == 'number' %}
+                <div class="number-field">
+                    <input type="number" name="{{ q.key }}" id="id_{{ q.key }}"
+                           value="{{ q.field.value|default:'' }}"
+                           {% for attr, val in q.attrs.items %}{{ attr }}="{{ val }}" {% endfor %}
+                           required>
+                </div>
+                {% if q.field.errors %}<div class="field-error">{{ q.field.errors.0 }}</div>{% endif %}
+                {% endif %}
+
+            </div>
+            {% endfor %}
+
+            <div class="submit-bar">
+                <span class="submit-note">All {{ questions_meta|length }} questions must be answered before submitting.</span>
+                <button type="submit" class="btn btn-primary btn-lg">Get My Results &rarr;</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<script>
+    // --- Unit toggle ---
+    let currentUnits = 'imperial';
+
+    function setUnits(mode) {
+        currentUnits = mode;
+        const impInputs = document.getElementById('imperial-inputs');
+        const metInputs = document.getElementById('metric-inputs');
+        const btnImp    = document.getElementById('btn-imperial');
+        const btnMet    = document.getElementById('btn-metric');
+        if (!impInputs) return;
+
+        if (mode === 'imperial') {
+            impInputs.style.display = '';
+            metInputs.style.display = 'none';
+            btnImp.classList.add('active');
+            btnMet.classList.remove('active');
+            // Convert cm/kg back to ft/in/lbs if metric values exist
+            const cm = parseFloat(document.getElementById('id_height_cm')?.value) || 0;
+            const kg = parseFloat(document.getElementById('id_weight_kg')?.value) || 0;
+            if (cm > 0) {
+                const totalIn = cm / 2.54;
+                const ft = Math.floor(totalIn / 12);
+                const ins = Math.round(totalIn % 12);
+                document.getElementById('id_height_ft_display').value = ft;
+                document.getElementById('id_height_in_display').value = ins;
+            }
+            if (kg > 0) {
+                document.getElementById('id_weight_lb_display').value = (kg * 2.20462).toFixed(1);
+            }
+        } else {
+            impInputs.style.display = 'none';
+            metInputs.style.display = '';
+            btnImp.classList.remove('active');
+            btnMet.classList.add('active');
+            // Convert ft/in/lbs to cm/kg if imperial values exist
+            const ft  = parseFloat(document.getElementById('id_height_ft_display')?.value) || 0;
+            const ins = parseFloat(document.getElementById('id_height_in_display')?.value) || 0;
+            const lbs = parseFloat(document.getElementById('id_weight_lb_display')?.value) || 0;
+            if (ft > 0 || ins > 0) {
+                document.getElementById('id_height_cm').value = Math.round((ft * 12 + ins) * 2.54);
+            }
+            if (lbs > 0) {
+                document.getElementById('id_weight_kg').value = (lbs / 2.20462).toFixed(1);
+            }
+        }
+        syncHiddenFields();
+        calcBMI();
+    }
+
+    function syncHiddenFields() {
+        // Always writes ft/in/lbs to the hidden fields the backend reads
+        if (currentUnits === 'imperial') {
+            const ft  = parseFloat(document.getElementById('id_height_ft_display')?.value) || 0;
+            const ins = parseFloat(document.getElementById('id_height_in_display')?.value) || 0;
+            const lbs = parseFloat(document.getElementById('id_weight_lb_display')?.value) || 0;
+            document.getElementById('id_height_ft').value = ft;
+            document.getElementById('id_height_in').value = ins;
+            document.getElementById('id_weight_lb').value = lbs;
+        } else {
+            const cm = parseFloat(document.getElementById('id_height_cm')?.value) || 0;
+            const kg = parseFloat(document.getElementById('id_weight_kg')?.value) || 0;
+            if (cm > 0) {
+                const totalIn = cm / 2.54;
+                document.getElementById('id_height_ft').value = Math.floor(totalIn / 12);
+                document.getElementById('id_height_in').value = Math.round(totalIn % 12);
+            }
+            if (kg > 0) {
+                document.getElementById('id_weight_lb').value = (kg * 2.20462).toFixed(1);
+            }
+        }
+    }
+
+    // --- BMI live calculation ---
+    function calcBMI() {
+        const bmiEl = document.getElementById('bmi-value');
+        const catEl = document.getElementById('bmi-category');
+        if (!bmiEl) return;
+
+        let bmi = 0;
+        if (currentUnits === 'imperial') {
+            const ft  = parseFloat(document.getElementById('id_height_ft_display')?.value) || 0;
+            const ins = parseFloat(document.getElementById('id_height_in_display')?.value) || 0;
+            const lbs = parseFloat(document.getElementById('id_weight_lb_display')?.value) || 0;
+            const totalIn = ft * 12 + ins;
+            if (totalIn > 0 && lbs > 0) bmi = (lbs * 703) / (totalIn * totalIn);
+        } else {
+            const cm = parseFloat(document.getElementById('id_height_cm')?.value) || 0;
+            const kg = parseFloat(document.getElementById('id_weight_kg')?.value) || 0;
+            if (cm > 0 && kg > 0) bmi = kg / ((cm / 100) * (cm / 100));
+        }
+
+        if (bmi > 0) {
+            bmiEl.textContent = bmi.toFixed(1);
+            let cat = '';
+            if (bmi < 18.5)    cat = '— Underweight';
+            else if (bmi < 25) cat = '— Healthy weight';
+            else if (bmi < 30) cat = '— Overweight';
+            else if (bmi < 35) cat = '— Obese';
+            else               cat = '— Severely obese';
+            catEl.textContent = cat;
+        } else {
+            bmiEl.textContent = '—';
+            catEl.textContent = '';
+        }
+    }
+
+    // Attach listeners to all four visible input fields
+    ['id_height_ft_display', 'id_height_in_display', 'id_weight_lb_display',
+     'id_height_cm', 'id_weight_kg'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', () => { syncHiddenFields(); calcBMI(); });
+    });
+
+    // --- Radio: highlight selected option ---
+    document.querySelectorAll('.radio-list').forEach(list => {
+        list.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                list.querySelectorAll('.radio-option').forEach(o => o.classList.remove('selected'));
+                radio.closest('.radio-option').classList.add('selected');
+            });
+        });
+    });
+
+    // --- Client-side required field check before submit ---
+    document.getElementById('survey-form').addEventListener('submit', function(e) {
+        // Sync hidden fields one final time before validation
+        syncHiddenFields();
+
+        let firstError = null;
+
+        document.querySelectorAll('.question-block').forEach(block => {
+            block.classList.remove('has-error');
+        });
+
+        // Check BMI inputs: validate the visible display fields, not the hidden ones
+        const bmiBlock = document.getElementById('block-bmi');
+        if (bmiBlock) {
+            let bmiOk = false;
+            if (currentUnits === 'imperial') {
+                const ft  = parseFloat(document.getElementById('id_height_ft_display')?.value) || 0;
+                const lbs = parseFloat(document.getElementById('id_weight_lb_display')?.value) || 0;
+                bmiOk = ft > 0 && lbs > 0;
+            } else {
+                const cm = parseFloat(document.getElementById('id_height_cm')?.value) || 0;
+                const kg = parseFloat(document.getElementById('id_weight_kg')?.value) || 0;
+                bmiOk = cm > 0 && kg > 0;
+            }
+            if (!bmiOk) {
+                bmiBlock.classList.add('has-error');
+                if (!firstError) firstError = bmiBlock;
+            }
+        }
+
+        // Check all other required inputs (skip hidden fields and BMI display inputs)
+        document.querySelectorAll('[required]').forEach(input => {
+            if (input.type === 'radio') return;
+            if (input.type === 'hidden') return;
+            // Skip the BMI display inputs — already handled above
+            const bmiDisplayIds = ['id_height_ft_display','id_height_in_display',
+                                   'id_weight_lb_display','id_height_cm','id_weight_kg'];
+            if (bmiDisplayIds.includes(input.id)) return;
+            if (!input.value.trim()) {
+                const block = input.closest('.question-block');
+                if (block) {
+                    block.classList.add('has-error');
+                    if (!firstError) firstError = block;
+                }
+            }
+        });
+
+        // Check radio groups
+        document.querySelectorAll('.radio-list').forEach(list => {
+            const name    = list.querySelector('input[type="radio"]')?.name;
+            const checked = name && document.querySelector(`input[name="${name}"]:checked`);
+            if (!checked) {
+                const block = list.closest('.question-block');
+                if (block) {
+                    block.classList.add('has-error');
+                    if (!firstError) firstError = block;
+                }
+            }
+        });
+
+        if (firstError) {
+            e.preventDefault();
+            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+</script>
+{% endblock %}

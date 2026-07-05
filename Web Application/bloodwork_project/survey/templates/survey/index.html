@@ -1,0 +1,316 @@
+{% extends 'survey/base.html' %}
+{% block title %}Select Your Tests — Bloodwork Screening Tool{% endblock %}
+
+{% block content %}
+<style>
+    .page-layout {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        gap: 1.5rem;
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    /* Sidebar */
+    .sidebar {
+        position: sticky;
+        top: 1.5rem;
+        align-self: start;
+    }
+
+    .sidebar .card { padding: 1.25rem; }
+
+    .sidebar h2 {
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted);
+        margin-bottom: 1rem;
+        padding-bottom: 0.6rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .select-all-link {
+        font-size: 0.82rem;
+        color: var(--accent);
+        cursor: pointer;
+        text-decoration: none;
+        display: block;
+        margin-bottom: 0.75rem;
+        padding: 0.2rem 0;
+    }
+    .select-all-link:hover { text-decoration: underline; }
+
+    .test-checkbox-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .test-checkbox-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        padding: 0.65rem 0.75rem;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+    }
+
+    .test-checkbox-item:hover { border-color: var(--accent); background: #f0f5fd; }
+    .test-checkbox-item.checked { border-color: var(--accent); background: #eef4fd; }
+
+    .test-checkbox-item input[type="checkbox"] {
+        margin-top: 2px;
+        accent-color: var(--accent);
+        width: 16px; height: 16px;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+
+    .test-name { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+    .test-desc { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
+
+    .sidebar-error {
+        font-size: 0.82rem;
+        color: var(--red);
+        margin-top: 0.6rem;
+        display: none;
+    }
+
+    .btn-start {
+        width: 100%;
+        margin-top: 1rem;
+        text-align: center;
+        padding: 0.75rem;
+    }
+
+    /* Main content area */
+    .intro-panel h1 {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--navy);
+        margin-bottom: 0.5rem;
+    }
+
+    .intro-panel .lead {
+        font-size: 1rem;
+        color: var(--muted);
+        max-width: 620px;
+        margin-bottom: 1.5rem;
+    }
+
+    .test-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .test-info-card {
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.1rem;
+        background: var(--surface);
+        transition: border-color 0.15s, box-shadow 0.15s;
+        cursor: pointer;
+    }
+
+    .test-info-card:hover,
+    .test-info-card.active {
+        border-color: var(--accent);
+        box-shadow: 0 2px 12px rgba(58, 123, 213, 0.12);
+    }
+
+    .test-info-card .card-label {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--navy);
+        margin-bottom: 0.25rem;
+    }
+
+    .test-info-card .card-full-label {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-bottom: 0.5rem;
+    }
+
+    .test-info-card .card-desc {
+        font-size: 0.82rem;
+        color: var(--text);
+    }
+
+    .how-it-works {
+        margin-top: 2rem;
+        padding: 1.25rem 1.5rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+    }
+
+    .how-it-works h3 {
+        font-size: 0.88rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin-bottom: 1rem;
+    }
+
+    .steps { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+
+    .step { display: flex; gap: 0.75rem; align-items: flex-start; flex: 1; min-width: 160px; }
+
+    .step-num {
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-size: 0.82rem;
+        font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .step-text { font-size: 0.88rem; color: var(--text); line-height: 1.5; }
+    .step-text strong { display: block; font-weight: 600; margin-bottom: 0.1rem; }
+
+    @media (max-width: 680px) {
+        .page-layout {
+            grid-template-columns: 1fr;
+        }
+        .sidebar {
+            position: static;
+        }
+        .test-cards-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+        .steps {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .step { min-width: unset; }
+    }
+</style>
+
+<div class="page-layout">
+
+    <!-- Sidebar: test selection -->
+    <aside class="sidebar">
+        <div class="card">
+            <h2>Select Tests</h2>
+            <a class="select-all-link" id="select-all-link" href="#">Select all</a>
+            <form method="post" action="{% url 'start_survey' %}" id="test-select-form">
+                {% csrf_token %}
+                <ul class="test-checkbox-list">
+                    {% for test in tests %}
+                    <li>
+                        <label class="test-checkbox-item" id="item-{{ test.key }}">
+                            <input type="checkbox" name="selected_tests" value="{{ test.key }}" class="test-cb">
+                            <div>
+                                <div class="test-name">{{ test.label }}</div>
+                                <div class="test-desc">{{ test.description }}</div>
+                            </div>
+                        </label>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if form.errors %}
+                <div class="sidebar-error" style="display:block;">
+                    Please select at least one test before continuing.
+                </div>
+                {% endif %}
+                <div class="sidebar-error" id="cb-error">Please select at least one test.</div>
+                <button type="submit" class="btn btn-primary btn-start">Take Survey &rarr;</button>
+            </form>
+        </div>
+    </aside>
+
+    <!-- Main intro panel -->
+    <div class="intro-panel">
+        <h1>Know Before You Go</h1>
+        <p class="lead">
+            This tool uses machine learning models trained on NHANES population data
+            to help you understand whether certain blood tests may be worth discussing
+            with your doctor. Select one or more tests on the left to get started.
+        </p>
+
+        <div class="test-cards-grid">
+            {% for test in tests %}
+            <div class="test-info-card" id="card-{{ test.key }}" onclick="toggleTest('{{ test.key }}')">
+                <div class="card-label">{{ test.label }}</div>
+                <div class="card-full-label">{{ test.full_label }}</div>
+                <div class="card-desc">{{ test.description }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="how-it-works">
+            <h3>How it works</h3>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-text"><strong>Select your tests</strong>Choose one or more blood tests you want to screen for.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-text"><strong>Answer the survey</strong>Answer a short set of health and lifestyle questions.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-text"><strong>Review your results</strong>See a personalized risk summary for each test you selected.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-text"><strong>Talk to your doctor</strong>Print your results and bring them to your next appointment.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Sync checkbox state with card highlights
+    function toggleTest(key) {
+        const cb   = document.querySelector(`input[value="${key}"]`);
+        const card = document.getElementById(`card-${key}`);
+        const item = document.getElementById(`item-${key}`);
+        if (!cb) return;
+        cb.checked = !cb.checked;
+        card.classList.toggle('active', cb.checked);
+        item.classList.toggle('checked', cb.checked);
+    }
+
+    // Keep card highlights in sync when checkbox is clicked directly
+    document.querySelectorAll('.test-cb').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const key  = cb.value;
+            const card = document.getElementById(`card-${key}`);
+            const item = document.getElementById(`item-${key}`);
+            card.classList.toggle('active', cb.checked);
+            item.classList.toggle('checked', cb.checked);
+        });
+    });
+
+    // Select all / deselect all
+    const selectAllLink = document.getElementById('select-all-link');
+    let allSelected = false;
+    selectAllLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        allSelected = !allSelected;
+        document.querySelectorAll('.test-cb').forEach(cb => {
+            cb.checked = allSelected;
+            const key  = cb.value;
+            document.getElementById(`card-${key}`).classList.toggle('active', allSelected);
+            document.getElementById(`item-${key}`).classList.toggle('checked', allSelected);
+        });
+        selectAllLink.textContent = allSelected ? 'Deselect all' : 'Select all';
+    });
+
+    // Validate at least one checkbox before submit
+    document.getElementById('test-select-form').addEventListener('submit', (e) => {
+        const any = [...document.querySelectorAll('.test-cb')].some(cb => cb.checked);
+        if (!any) {
+            e.preventDefault();
+            document.getElementById('cb-error').style.display = 'block';
+        }
+    });
+</script>
+{% endblock %}
