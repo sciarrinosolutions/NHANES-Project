@@ -1,0 +1,91 @@
+{% extends "varSearch/base.html" %}
+{% block title %}Lab Reference Ranges — NHANES Explorer{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="container">
+    <h1><i class="bi bi-clipboard2-pulse me-2"></i>Lab Reference Ranges</h1>
+    <p class="subtitle">
+      {{ total }} lab variables across {{ panels|length }} panel{{ panels|length|pluralize }}
+      &mdash; click any variable to run correlation analysis
+    </p>
+  </div>
+</div>
+
+<div class="container pb-5">
+
+  {% if error %}
+    <div class="alert alert-danger">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
+    </div>
+  {% endif %}
+
+  {% for panel, labs in panels.items %}
+  <h6 class="text-uppercase mb-3 {% if not forloop.first %}mt-5{% endif %}"
+      style="font-family:var(--font-mono);font-size:0.72rem;letter-spacing:0.1em;
+             color:var(--nhanes-muted);border-bottom:1px solid var(--nhanes-border);
+             padding-bottom:6px;">
+    <i class="bi bi-layers me-1"></i>{{ panel }}
+    <span style="font-weight:400;">({{ labs|length }})</span>
+  </h6>
+
+  <div class="table-responsive mb-2">
+    <table class="table table-sm" style="font-size:0.85rem;">
+      <thead>
+        <tr style="font-family:var(--font-mono);font-size:0.7rem;
+                   color:var(--nhanes-muted);text-transform:uppercase;letter-spacing:0.06em;">
+          <th>Code</th>
+          <th>Description</th>
+          <th>Units</th>
+          <th colspan="2" class="text-center">Male Range</th>
+          <th colspan="2" class="text-center">Female Range</th>
+          <th></th>
+        </tr>
+        <tr style="font-family:var(--font-mono);font-size:0.68rem;color:#9ca3af;">
+          <th></th><th></th><th></th>
+          <th class="text-center">Low</th>
+          <th class="text-center">High</th>
+          <th class="text-center">Low</th>
+          <th class="text-center">High</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lab in labs %}
+        <tr>
+          <td>
+            <span class="var-code">{{ lab.column_name }}</span>
+          </td>
+          <td>{{ lab.sas_label }}</td>
+          <td style="color:var(--nhanes-muted);font-family:var(--font-mono);font-size:0.78rem;">
+            {{ lab.units }}
+          </td>
+          <td class="text-center" style="color:#0077b6;font-family:var(--font-mono);">
+            {{ lab.crr_m_low }}
+          </td>
+          <td class="text-center" style="color:#e63946;font-family:var(--font-mono);">
+            {{ lab.crr_m_high }}
+          </td>
+          <td class="text-center" style="color:#0077b6;font-family:var(--font-mono);">
+            {{ lab.crr_f_low }}
+          </td>
+          <td class="text-center" style="color:#e63946;font-family:var(--font-mono);">
+            {{ lab.crr_f_high }}
+          </td>
+          <td>
+            <a href="{% url 'correlate_setup' lab.column_name %}"
+               class="btn btn-sm"
+               style="background:var(--nhanes-accent);color:#fff;
+                      font-size:0.72rem;font-weight:600;white-space:nowrap;">
+              <i class="bi bi-graph-up me-1"></i>Correlate
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+
+</div>
+{% endblock %}

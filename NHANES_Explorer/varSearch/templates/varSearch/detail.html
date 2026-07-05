@@ -1,0 +1,207 @@
+{% extends "varSearch/base.html" %}
+{% block title %}{{ variable.column_name }} — NHANES Variable Explorer{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="container">
+    <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+      <div>
+        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          <span class="var-code" style="font-size:1rem;">{{ variable.column_name }}</span>
+          <span class="type-badge type-{{ variable.var_type }}">{{ variable.var_type }}</span>
+          <span class="badge bg-secondary" style="font-size:0.7rem;">
+            {{ variable.component }}
+          </span>
+        </div>
+        <h1 style="font-size:1.3rem;">{{ variable.sas_label|default:variable.column_name }}</h1>
+        {% if variable.human_readable and variable.human_readable != variable.sas_label %}
+          <p class="subtitle">{{ variable.human_readable }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Actions -->
+      <div class="d-flex gap-2 align-items-center mt-1">
+        <button class="btn-fav {% if is_favorite %}active{% endif %}"
+                data-column="{{ variable.column_name }}"
+                data-csrf="{{ csrf_token }}"
+                style="font-size:1.4rem;"
+                title="{% if is_favorite %}Remove from library{% else %}Add to library{% endif %}">
+          <i class="bi bi-bookmark{% if is_favorite %}-fill{% endif %}"></i>
+        </button>
+        {% if nhanes_url %}
+          <a href="{{ nhanes_url }}" target="_blank" rel="noopener"
+             class="btn btn-sm"
+             style="background:var(--nhanes-teal);color:#fff;font-weight:600;font-size:0.8rem;">
+            <i class="bi bi-box-arrow-up-right me-1"></i>NHANES Codebook
+          </a>
+        {% endif %}
+        <a href="{% url 'search' %}" class="btn btn-sm btn-outline-light"
+           style="font-size:0.8rem;">
+          <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container pb-5">
+  <div class="row g-4">
+
+    <!-- Left column: core metadata -->
+    <div class="col-lg-7">
+
+      <!-- Description -->
+      {% if variable.description %}
+      <div class="card p-4 mb-4">
+        <p class="detail-section-title"><i class="bi bi-card-text me-1"></i>Description</p>
+        <p class="detail-value mb-0">{{ variable.description }}</p>
+      </div>
+      {% endif %}
+
+      <!-- Key metadata -->
+      <div class="card p-4 mb-4">
+        <p class="detail-section-title"><i class="bi bi-info-circle me-1"></i>Metadata</p>
+        <table class="table table-sm kv-table mb-0">
+          <tbody>
+            <tr>
+              <td>Data File</td>
+              <td>{{ variable.data_file|default:"—" }}</td>
+            </tr>
+            <tr>
+              <td>File Description</td>
+              <td>{{ variable.data_file_desc|default:"—" }}</td>
+            </tr>
+            <tr>
+              <td>Component</td>
+              <td>{{ variable.component|default:"—" }}</td>
+            </tr>
+            <tr>
+              <td>Target</td>
+              <td>{{ variable.target|default:"—" }}</td>
+            </tr>
+            <tr>
+              <td>Variable Type</td>
+              <td>
+                <span class="type-badge type-{{ variable.var_type }}">
+                  {{ variable.var_type }}
+                </span>
+              </td>
+            </tr>
+            {% if variable.valid_range_min or variable.valid_range_max %}
+            <tr>
+              <td>Valid Range</td>
+              <td>
+                {{ variable.valid_range_min|default:"?" }}
+                &mdash;
+                {{ variable.valid_range_max|default:"?" }}
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Hard edit notes -->
+      {% if variable.hard_edit_notes %}
+      <div class="card p-4 mb-4">
+        <p class="detail-section-title">
+          <i class="bi bi-exclamation-circle me-1"></i>CAPI Edit Notes
+        </p>
+        <p class="detail-value mb-0" style="white-space:pre-wrap;font-size:0.85rem;">
+          {{ variable.hard_edit_notes }}
+        </p>
+      </div>
+      {% endif %}
+
+      <!-- Parse notes -->
+      {% if variable.parse_notes %}
+      <div class="card p-4 mb-4 border-warning">
+        <p class="detail-section-title" style="color:#a16207;">
+          <i class="bi bi-flag me-1"></i>Artifact Notes
+        </p>
+        <p class="detail-value mb-0" style="font-size:0.85rem;color:#a16207;">
+          {{ variable.parse_notes }}
+        </p>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- Right column: coded values -->
+    <div class="col-lg-5">
+
+      <!-- Value labels -->
+      {% if variable.value_labels %}
+      <div class="card p-4 mb-4">
+        <p class="detail-section-title">
+          <i class="bi bi-list-ul me-1"></i>Value Labels
+        </p>
+        <table class="table table-sm kv-table mb-0">
+          <thead>
+            <tr>
+              <th style="font-family:var(--font-mono);font-size:0.75rem;color:#6b7280;">
+                Code
+              </th>
+              <th style="font-size:0.75rem;color:#6b7280;">Label</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for code, label in variable.value_labels.items %}
+            <tr>
+              <td>{{ code }}</td>
+              <td>{{ label }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      <!-- Sentinel values -->
+      {% if variable.sentinel_values %}
+      <div class="card p-4 mb-4 border-danger">
+        <p class="detail-section-title" style="color:#dc3545;">
+          <i class="bi bi-slash-circle me-1"></i>Sentinel Values
+          <small class="fw-normal ms-1" style="text-transform:none;letter-spacing:0;">
+            (replace with NaN)
+          </small>
+        </p>
+        <table class="table table-sm kv-table mb-0">
+          <thead>
+            <tr>
+              <th style="font-family:var(--font-mono);font-size:0.75rem;color:#6b7280;">
+                Code
+              </th>
+              <th style="font-size:0.75rem;color:#6b7280;">Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for code, label in variable.sentinel_values.items %}
+            <tr>
+              <td style="color:#dc3545;">{{ code }}</td>
+              <td style="color:#dc3545;">{{ label }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      <!-- NHANES link card -->
+      {% if nhanes_url %}
+      <div class="card p-4"
+           style="background:var(--nhanes-light);border-color:var(--nhanes-teal);">
+        <p class="detail-section-title">
+          <i class="bi bi-link-45deg me-1"></i>External Reference
+        </p>
+        <a href="{{ nhanes_url }}" target="_blank" rel="noopener"
+           style="font-size:0.82rem;word-break:break-all;">
+          {{ nhanes_url }}
+        </a>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

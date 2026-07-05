@@ -1,0 +1,583 @@
+{% extends "varSearch/base.html" %}
+{% load export_tags %}
+{% block title %}Clean & Export — NHANES Variable Explorer{% endblock %}
+
+{% block extra_head %}
+<style>
+  .export-table th {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--nhanes-muted);
+    white-space: nowrap;
+    background: #f8fafc;
+    border-bottom: 2px solid var(--nhanes-border);
+    padding: 10px 12px;
+  }
+  .export-table td {
+    vertical-align: middle;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.85rem;
+  }
+  .export-table tr.excluded td {
+    opacity: 0.4;
+  }
+
+  /* Sentinel pills */
+  .sentinel-list { display: flex; flex-wrap: wrap; gap: 4px; min-height: 28px; }
+  .sentinel-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #fee2e2; color: #991b1b;
+    border: 1px solid #fca5a5;
+    border-radius: 4px; padding: 1px 6px;
+    font-family: var(--font-mono); font-size: 0.72rem; cursor: default;
+  }
+  .sentinel-pill .remove-sentinel {
+    cursor: pointer; font-weight: 700; color: #dc2626;
+    line-height: 1; border: none; background: none; padding: 0 1px;
+  }
+  .sentinel-pill .remove-sentinel:hover { color: #7f1d1d; }
+
+  .sentinel-pill.custom {
+    background: #fef9c3; color: #a16207; border-color: #fde047;
+  }
+  .sentinel-pill .repl-badge {
+    background: rgba(0,0,0,0.08); border-radius: 3px;
+    padding: 0 4px; font-size: 0.68rem;
+  }
+
+  /* Add sentinel input */
+  .add-sentinel-row { display: flex; gap: 4px; margin-top: 4px; }
+  .add-sentinel-row input {
+    width: 64px; font-family: var(--font-mono); font-size: 0.78rem;
+    border: 1px solid var(--nhanes-border); border-radius: 4px; padding: 2px 6px;
+  }
+  .add-sentinel-row .repl-input {
+    width: 72px;
+  }
+  .add-sentinel-row button {
+    font-size: 0.75rem; padding: 2px 8px;
+    background: var(--nhanes-accent); color: #fff;
+    border: none; border-radius: 4px; cursor: pointer;
+  }
+
+  /* Binary toggle */
+  .form-check-input:checked { background-color: var(--nhanes-accent); border-color: var(--nhanes-accent); }
+
+  /* Status badges */
+  .xpt-ok   { color: #15803d; font-size: 0.75rem; }
+  .xpt-miss { color: #dc2626; font-size: 0.75rem; }
+
+  /* Save / export bar */
+  .action-bar {
+    position: sticky; bottom: 0; z-index: 100;
+    background: var(--nhanes-navy);
+    border-top: 2px solid var(--nhanes-teal);
+    padding: 14px 0;
+  }
+
+  /* Path config card */
+  .path-card {
+    border-left: 4px solid var(--nhanes-teal);
+    background: var(--nhanes-light);
+  }
+
+  /* Detail modal overrides */
+  .modal-header { background: var(--nhanes-navy); color: #fff; }
+  .modal-header .btn-close { filter: invert(1); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<div class="page-hero">
+  <div class="container">
+    <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+      <div>
+        <h1><i class="bi bi-download me-2"></i>Clean &amp; Export</h1>
+        <p class="subtitle">
+          {{ total }} variable{{ total|pluralize }} from your library
+          &mdash;
+          {% if xpt_missing > 0 %}
+            <span style="color:#f87171;">{{ xpt_missing }} XPT file{{ xpt_missing|pluralize }} not found</span>
+          {% else %}
+            <span style="color:#4ade80;">all XPT files resolved</span>
+          {% endif %}
+        </p>
+      </div>
+      <a href="{% url 'library' %}" class="btn btn-sm btn-outline-light"
+         style="font-size:0.8rem;">
+        <i class="bi bi-arrow-left me-1"></i>Library
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="container pb-5">
+
+  <!-- Data folder config -->
+  <div class="card path-card p-3 mb-4">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div class="flex-grow-1">
+        <p class="detail-section-title mb-1">
+          <i class="bi bi-folder2-open me-1"></i>XPT Data Folder
+        </p>
+        <div class="d-flex gap-2">
+          <input type="text" id="dataPathInput"
+                 class="form-control form-control-sm"
+                 placeholder="/absolute/path/to/your/data/folder"
+                 value="{{ data_path }}"
+                 style="font-family:var(--font-mono);font-size:0.82rem;max-width:520px;">
+          <button onclick="saveDataPath()"
+                  class="btn btn-sm"
+                  style="background:var(--nhanes-accent);color:#fff;font-weight:600;">
+            Set Path
+          </button>
+        </div>
+        <small class="text-muted" style="font-size:0.75rem;">
+          Expected structure: <code>data/Demographics/DEMO_L.xpt</code>,
+          <code>data/Laboratory/BIOPRO_L.xpt</code>, etc.
+        </small>
+      </div>
+      <div id="pathStatus" style="font-size:0.82rem;"></div>
+    </div>
+  </div>
+
+  <!-- Variable config table -->
+  {% if rows %}
+  <div class="table-responsive">
+    <table class="table export-table" id="exportTable">
+      <thead>
+        <tr>
+          <th style="width:32px;">
+            <input type="checkbox" id="includeAll" checked
+                   title="Include / exclude all"
+                   onchange="toggleAll(this.checked)">
+          </th>
+          <th>Variable</th>
+          <th>Custom Header</th>
+          <th>Sentinel Values &rarr; Replacement</th>
+          <th style="width:110px;">Binary Recode<br>
+            <small style="text-transform:none;letter-spacing:0;font-weight:400;">
+              1→0 / 2→1
+            </small>
+          </th>
+          <th style="width:60px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr id="row-{{ row.variable.column_name }}"
+            class="{% if not row.settings.include %}excluded{% endif %}">
+
+          <!-- Include toggle -->
+          <td>
+            <input type="checkbox"
+                   class="include-cb"
+                   data-col="{{ row.variable.column_name }}"
+                   {% if row.settings.include %}checked{% endif %}
+                   onchange="toggleInclude('{{ row.variable.column_name }}', this.checked)">
+          </td>
+
+          <!-- Variable info -->
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <span class="var-code">{{ row.variable.column_name }}</span>
+              {% if row.xpt_found %}
+                <i class="bi bi-check-circle-fill xpt-ok" title="{{ row.xpt_path }}"></i>
+              {% else %}
+                <i class="bi bi-x-circle-fill xpt-miss"
+                   title="XPT not found: {{ row.variable.data_file }}.xpt in {{ row.variable.component }}"></i>
+              {% endif %}
+            </div>
+            <div style="font-size:0.78rem;color:var(--nhanes-muted);margin-top:2px;">
+              {{ row.variable.sas_label|truncatechars:50 }}
+            </div>
+            <div style="font-size:0.72rem;color:#9ca3af;">
+              <span class="type-badge type-{{ row.variable.var_type }}">
+                {{ row.variable.var_type }}
+              </span>
+              {{ row.variable.component }}
+            </div>
+          </td>
+
+          <!-- Custom header -->
+          <td>
+            <input type="text"
+                   class="form-control form-control-sm header-input"
+                   data-col="{{ row.variable.column_name }}"
+                   value="{{ row.settings.custom_header }}"
+                   placeholder="{{ row.variable.column_name }}"
+                   style="font-family:var(--font-mono);font-size:0.8rem;width:140px;">
+          </td>
+
+          <!-- Sentinels -->
+          <td>
+            <div class="sentinel-list" id="sentinels-{{ row.variable.column_name }}">
+              {% for code, repl in row.settings.sentinels.items %}
+              <span class="sentinel-pill {% if repl != '' %}custom{% endif %}"
+                    data-col="{{ row.variable.column_name }}"
+                    data-code="{{ code }}">
+                {{ code }}
+                <span class="repl-badge">
+                  {% if repl == '' %}NaN{% else %}{{ repl }}{% endif %}
+                </span>
+                <button class="remove-sentinel"
+                        onclick="removeSentinel('{{ row.variable.column_name }}', '{{ code }}')"
+                        title="Remove sentinel">×</button>
+              </span>
+              {% empty %}
+              <span style="font-size:0.75rem;color:#9ca3af;font-style:italic;">none</span>
+              {% endfor %}
+            </div>
+            <div class="add-sentinel-row">
+              <input type="text"
+                     id="newcode-{{ row.variable.column_name }}"
+                     placeholder="code"
+                     title="Sentinel code to replace">
+              <input type="text"
+                     class="repl-input"
+                     id="newrepl-{{ row.variable.column_name }}"
+                     placeholder="NaN"
+                     title="Replacement value (leave blank for NaN)">
+              <button onclick="addSentinel('{{ row.variable.column_name }}')">
+                + Add
+              </button>
+            </div>
+          </td>
+
+          <!-- Binary recode toggle -->
+          <td class="text-center">
+            {% if row.variable.var_type == 'binary' %}
+            <div class="form-check form-switch d-flex justify-content-center mb-0">
+              <input class="form-check-input binary-toggle"
+                     type="checkbox"
+                     role="switch"
+                     data-col="{{ row.variable.column_name }}"
+                     id="recode-{{ row.variable.column_name }}"
+                     {% if row.settings.recode_binary %}checked{% endif %}>
+            </div>
+            {% else %}
+            <span style="color:#d1d5db;font-size:0.75rem;">—</span>
+            {% endif %}
+          </td>
+
+          <!-- Detail button -->
+          <td>
+            <button class="btn btn-sm btn-outline-secondary"
+                    style="font-size:0.72rem;white-space:nowrap;"
+                    onclick="showDetail('{{ row.variable.column_name }}')"
+                    title="View full variable detail">
+              <i class="bi bi-info-circle"></i>
+            </button>
+          </td>
+
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="text-center py-5">
+      <i class="bi bi-bookmark" style="font-size:3rem;color:#dee2e6;"></i>
+      <p class="mt-3 text-muted">No variables in your library yet.</p>
+      <a href="{% url 'library' %}" class="btn btn-sm btn-outline-secondary">
+        Go to Library
+      </a>
+    </div>
+  {% endif %}
+
+</div><!-- /container -->
+
+<!-- Sticky action bar -->
+{% if rows %}
+<div class="action-bar">
+  <div class="container d-flex align-items-center justify-content-between gap-3">
+    <div style="font-size:0.82rem;color:rgba(255,255,255,0.6);">
+      <span id="includedCount">{{ included }}</span> variable{{ included|pluralize }}
+      will be exported
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-light"
+              style="font-size:0.82rem;"
+              onclick="saveSettings()">
+        <i class="bi bi-floppy me-1"></i>Save Settings
+      </button>
+      <button class="btn btn-sm"
+              style="background:var(--nhanes-teal);color:#fff;font-weight:600;font-size:0.82rem;"
+              onclick="confirmExport()">
+        <i class="bi bi-download me-1"></i>Export CSV
+      </button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ── Detail modal ─────────────────────────────────────────────────────── -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="detailModalTitle" style="font-family:var(--font-mono);font-size:1rem;">
+          Variable Detail
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="detailModalBody">
+        <div class="text-center py-4">
+          <div class="spinner-border text-secondary" role="status"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm export modal ─────────────────────────────────────────────── -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" style="font-family:var(--font-mono);font-size:1rem;">
+          Confirm Export
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="confirmBody">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                data-bs-dismiss="modal">Cancel</button>
+        <form method="post" action="{% url 'run_export' %}" id="exportForm">
+          {% csrf_token %}
+          <button type="submit"
+                  class="btn btn-sm"
+                  style="background:var(--nhanes-teal);color:#fff;font-weight:600;">
+            <i class="bi bi-download me-1"></i>Yes, Export
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── State: mirrors the table. Initialised from Django context. ────────────────
+const STATE = {};
+{% for row in rows %}
+STATE["{{ row.variable.column_name }}"] = {
+  custom_header  : {{ row.settings.custom_header|default:row.variable.column_name|tojson }},
+  sentinels      : {{ row.settings.sentinels|tojson }},
+  recode_binary  : {{ row.settings.recode_binary|yesno:"true,false" }},
+  include        : {{ row.settings.include|yesno:"true,false" }},
+};
+{% endfor %}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function csrfToken() {
+  return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+function updateIncludedCount() {
+  const n = Object.values(STATE).filter(s => s.include).length;
+  document.getElementById('includedCount').textContent = n;
+}
+
+// ── Include / exclude ─────────────────────────────────────────────────────────
+function toggleInclude(col, checked) {
+  STATE[col].include = checked;
+  const row = document.getElementById('row-' + col);
+  row.classList.toggle('excluded', !checked);
+  updateIncludedCount();
+}
+
+function toggleAll(checked) {
+  document.querySelectorAll('.include-cb').forEach(cb => {
+    cb.checked = checked;
+    toggleInclude(cb.dataset.col, checked);
+  });
+}
+
+// ── Custom header ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.header-input').forEach(inp => {
+  inp.addEventListener('input', function () {
+    STATE[this.dataset.col].custom_header = this.value.trim() || this.dataset.col;
+  });
+});
+
+// ── Binary recode ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.binary-toggle').forEach(toggle => {
+  toggle.addEventListener('change', function () {
+    STATE[this.dataset.col].recode_binary = this.checked;
+  });
+});
+
+// ── Sentinels ─────────────────────────────────────────────────────────────────
+function renderSentinels(col) {
+  const container = document.getElementById('sentinels-' + col);
+  const sentinels = STATE[col].sentinels;
+  const keys      = Object.keys(sentinels);
+
+  if (keys.length === 0) {
+    container.innerHTML = '<span style="font-size:0.75rem;color:#9ca3af;font-style:italic;">none</span>';
+    return;
+  }
+
+  container.innerHTML = keys.map(code => {
+    const repl  = sentinels[code];
+    const label = (repl === '' || repl === null) ? 'NaN' : repl;
+    const cls   = (repl === '' || repl === null) ? '' : ' custom';
+    return `<span class="sentinel-pill${cls}" data-col="${col}" data-code="${code}">
+      ${code}
+      <span class="repl-badge">${label}</span>
+      <button class="remove-sentinel"
+              onclick="removeSentinel('${col}', '${code}')"
+              title="Remove sentinel">×</button>
+    </span>`;
+  }).join('');
+}
+
+function removeSentinel(col, code) {
+  delete STATE[col].sentinels[code];
+  renderSentinels(col);
+}
+
+function addSentinel(col) {
+  const codeInput = document.getElementById('newcode-' + col);
+  const replInput = document.getElementById('newrepl-' + col);
+  const code = codeInput.value.trim();
+  if (!code) { codeInput.focus(); return; }
+  const repl = replInput.value.trim();
+  STATE[col].sentinels[code] = repl;
+  renderSentinels(col);
+  codeInput.value = '';
+  replInput.value = '';
+  codeInput.focus();
+}
+
+// ── Data path ─────────────────────────────────────────────────────────────────
+function saveDataPath() {
+  const path   = document.getElementById('dataPathInput').value.trim();
+  const status = document.getElementById('pathStatus');
+  if (!path) return;
+
+  fetch("{% url 'set_data_path' %}", {
+    method : 'POST',
+    headers: {
+      'X-CSRFToken'  : csrfToken(),
+      'Content-Type' : 'application/x-www-form-urlencoded',
+    },
+    body: 'data_path=' + encodeURIComponent(path),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      status.innerHTML = '<span style="color:#4ade80;"><i class="bi bi-check-circle-fill me-1"></i>Path saved. Reload to re-check XPT files.</span>';
+    } else {
+      status.innerHTML = '<span style="color:#f87171;"><i class="bi bi-x-circle-fill me-1"></i>' + data.error + '</span>';
+    }
+  });
+}
+
+// ── Save settings ─────────────────────────────────────────────────────────────
+function saveSettings() {
+  fetch("{% url 'save_settings' %}", {
+    method : 'POST',
+    headers: {
+      'X-CSRFToken'  : csrfToken(),
+      'Content-Type' : 'application/json',
+    },
+    body: JSON.stringify(STATE),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      const btn = event.target;
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Saved';
+      btn.style.borderColor = '#4ade80';
+      btn.style.color = '#4ade80';
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.style.borderColor = '';
+        btn.style.color = '';
+      }, 1800);
+    }
+  });
+}
+
+// ── Confirm export modal ──────────────────────────────────────────────────────
+function confirmExport() {
+  const included = Object.entries(STATE)
+    .filter(([, s]) => s.include)
+    .map(([col, s]) => ({ col, header: s.custom_header || col }));
+
+  const body = document.getElementById('confirmBody');
+  body.innerHTML = `
+    <p>You are about to export <strong>${included.length} variable${included.length !== 1 ? 's' : ''}</strong>
+    as a single outer-joined CSV on SEQN.</p>
+    <p style="font-size:0.82rem;color:var(--nhanes-muted);">
+      Sentinel values will be replaced, binary recodes applied, and
+      columns renamed according to your current settings.
+    </p>
+    <div style="max-height:180px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;padding:8px;">
+      ${included.map(v =>
+        `<div style="font-size:0.78rem;font-family:var(--font-mono);">
+          <span style="color:var(--nhanes-accent);">${v.col}</span>
+          ${v.header !== v.col ? `<span style="color:#9ca3af;"> → ${v.header}</span>` : ''}
+        </div>`
+      ).join('')}
+    </div>
+    <p class="mt-3 mb-0" style="font-size:0.82rem;">
+      <strong>Note:</strong> Make sure you have saved your settings before exporting,
+      or current in-memory settings will be used.
+    </p>
+  `;
+
+  new bootstrap.Modal(document.getElementById('confirmModal')).show();
+}
+
+// ── Variable detail modal ─────────────────────────────────────────────────────
+function showDetail(col) {
+  const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+  const title = document.getElementById('detailModalTitle');
+  const body  = document.getElementById('detailModalBody');
+
+  title.textContent = col;
+  body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-secondary" role="status"></div></div>';
+  modal.show();
+
+  fetch('/variable/' + col + '/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+  .then(r => r.text())
+  .then(html => {
+    // Extract just the main content area from the detail page
+    const parser = new DOMParser();
+    const doc    = parser.parseFromString(html, 'text/html');
+    const inner  = doc.querySelector('.container.pb-5');
+    if (inner) {
+      body.innerHTML = inner.innerHTML;
+    } else {
+      body.innerHTML = '<p class="text-muted p-3">Could not load detail.</p>';
+    }
+  })
+  .catch(() => {
+    body.innerHTML = '<p class="text-muted p-3">Failed to load variable detail.</p>';
+  });
+}
+
+// ── Initialise count ──────────────────────────────────────────────────────────
+updateIncludedCount();
+</script>
+
+<!-- Inline tojson filter shim: Django doesn't have tojson built-in so
+     we serialise values that need it directly in the STATE block above.
+     The filter below is a no-op placeholder; actual serialisation happens
+     in the view via the json_script tag approach in the template. -->
+{% endblock %}

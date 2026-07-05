@@ -1,0 +1,141 @@
+{% extends "varSearch/base.html" %}
+{% block title %}{% if query %}{{ query }} — {% endif %}NHANES Variable Search{% endblock %}
+{% block nav_search %}active{% endblock %}
+
+{% block content %}
+<!-- Hero / Search bar -->
+<div class="page-hero">
+  <div class="container">
+    <h1><i class="bi bi-database-check me-2"></i>Variable Search</h1>
+    <p class="subtitle">TF-IDF semantic search across {{ total|default:"all" }} NHANES codebook variables</p>
+    <form method="get" action="{% url 'search' %}" class="mt-4">
+      <div class="input-group" style="max-width:620px;">
+        <input type="text"
+               name="q"
+               value="{{ query }}"
+               placeholder="e.g.  sleep,  blood pressure,  fasting glucose ..."
+               class="form-control search-input"
+               autofocus>
+        <button type="submit" class="btn btn-search">
+          <i class="bi bi-search me-1"></i>Search
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="container pb-5">
+
+  {% if error %}
+    <div class="alert alert-danger">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
+    </div>
+  {% endif %}
+
+  {% if query and not error %}
+    <!-- Result count bar -->
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <p class="text-muted mb-0" style="font-size:0.875rem;">
+        {% if results %}
+          Showing <strong>{{ results|length }}</strong> result{{ results|length|pluralize }}
+          for <strong>&ldquo;{{ query }}&rdquo;</strong>
+        {% else %}
+          No results found for <strong>&ldquo;{{ query }}&rdquo;</strong>
+        {% endif %}
+      </p>
+    </div>
+
+    {% if not results %}
+      <div class="text-center py-5">
+        <i class="bi bi-search" style="font-size:3rem;color:#dee2e6;"></i>
+        <p class="mt-3 text-muted">Try different keywords or a shorter query.</p>
+      </div>
+    {% endif %}
+
+    <!-- Results grid -->
+    <div class="row g-3">
+      {% for r in results %}
+      <div class="col-12">
+        <div class="card px-4 py-3">
+          <div class="d-flex align-items-start justify-content-between gap-3">
+
+            <!-- Left: code + label -->
+            <div class="flex-grow-1" style="min-width:0;">
+              <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                <span class="var-code">{{ r.column_name }}</span>
+                <span class="type-badge type-{{ r.var_type }}">{{ r.var_type }}</span>
+                <span class="badge bg-light text-secondary border"
+                      style="font-size:0.7rem;">{{ r.component }}</span>
+              </div>
+
+              <a href="{% url 'detail' r.column_name %}"
+                 class="text-decoration-none">
+                <h6 class="mb-1" style="color:#0d1b2a;font-weight:600;">
+                  {{ r.sas_label|default:r.column_name }}
+                </h6>
+              </a>
+
+              {% if r.description %}
+                <p class="text-muted mb-1"
+                   style="font-size:0.82rem;
+                          overflow:hidden;
+                          display:-webkit-box;
+                          -webkit-line-clamp:2;
+                          -webkit-box-orient:vertical;">
+                  {{ r.description }}
+                </p>
+              {% endif %}
+
+              <!-- Score bar -->
+              <div class="d-flex align-items-center gap-2 mt-2">
+                <div style="width:100px;background:#e9ecef;height:3px;border-radius:2px;">
+                  <div class="score-bar"
+                       style="width:{{ r.score|floatformat:0 }}%{% if r.score < 1 %}; width: calc({{ r.tfidf_score }} * 100%){% endif %};
+                              max-width:100%;"></div>
+                </div>
+                <span style="font-size:0.7rem;color:#9ca3af;font-family:var(--font-mono);">
+                  score {{ r.score }}
+                </span>
+                <span style="font-size:0.7rem;color:#9ca3af;">
+                  &middot; {{ r.data_file }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Right: actions -->
+            <div class="d-flex flex-column align-items-end gap-2 flex-shrink-0">
+              <button class="btn-fav {% if r.is_favorite %}active{% endif %}"
+                      data-column="{{ r.column_name }}"
+                      data-csrf="{{ csrf_token }}"
+                      title="{% if r.is_favorite %}Remove from library{% else %}Add to library{% endif %}">
+                <i class="bi bi-bookmark{% if r.is_favorite %}-fill{% endif %}"></i>
+              </button>
+              <a href="{% url 'detail' r.column_name %}"
+                 class="btn btn-sm btn-outline-secondary"
+                 style="font-size:0.75rem;">
+                Details <i class="bi bi-arrow-right ms-1"></i>
+              </a>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+  {% elif not query %}
+    <!-- Empty state -->
+    <div class="text-center py-5">
+      <i class="bi bi-database" style="font-size:3.5rem;color:#dee2e6;"></i>
+      <h5 class="mt-3 text-muted fw-normal">Search the NHANES codebook</h5>
+      <p class="text-muted" style="font-size:0.875rem;max-width:420px;margin:0 auto;">
+        Enter a concept, symptom, or clinical term to find related variables.
+        Try <a href="?q=sleep" class="text-decoration-none">sleep</a>,
+        <a href="?q=blood+pressure" class="text-decoration-none">blood pressure</a>, or
+        <a href="?q=fasting+glucose" class="text-decoration-none">fasting glucose</a>.
+      </p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

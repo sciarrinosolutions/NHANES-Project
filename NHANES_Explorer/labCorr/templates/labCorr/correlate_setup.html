@@ -1,0 +1,325 @@
+{% extends "varSearch/base.html" %}
+{% load export_tags %}
+{% block title %}Correlation Setup — {{ lab.column_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .var-chip {
+    display:inline-flex; align-items:center; gap:5px;
+    background:#e8f4f8; border:1px solid #b6d9ea;
+    border-radius:5px; padding:3px 8px;
+    font-size:0.78rem; margin:2px;
+  }
+  .var-chip .remove-chip {
+    cursor:pointer; color:#64748b; border:none;
+    background:none; font-weight:700; padding:0 1px; line-height:1;
+  }
+  .var-chip .remove-chip:hover { color:#dc2626; }
+  .var-chip .chip-type {
+    font-family:var(--font-mono); font-size:0.68rem;
+    color:var(--nhanes-muted);
+  }
+  #searchResults {
+    position:absolute; z-index:200; background:#fff;
+    border:1px solid var(--nhanes-border); border-radius:6px;
+    max-height:260px; overflow-y:auto; width:100%;
+    box-shadow:0 4px 16px rgba(0,0,0,0.1);
+  }
+  .search-result-item {
+    padding:8px 12px; cursor:pointer; font-size:0.83rem;
+    border-bottom:1px solid #f3f4f6;
+  }
+  .search-result-item:hover { background:var(--nhanes-light); }
+  .range-pill {
+    display:inline-block; padding:2px 8px; border-radius:4px;
+    font-family:var(--font-mono); font-size:0.78rem; font-weight:600;
+  }
+  .range-m { background:#dbeafe; color:#1d4ed8; }
+  .range-f { background:#fce7f3; color:#9d174d; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="container">
+    <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+      <div>
+        <h1>
+          <i class="bi bi-graph-up me-2"></i>Correlation Setup
+        </h1>
+        <p class="subtitle">
+          <span class="var-code" style="font-size:0.9rem;">{{ lab.column_name }}</span>
+          &nbsp;{{ lab.sas_label }}
+        </p>
+      </div>
+      <a href="{% url 'lab_list' %}" class="btn btn-sm btn-outline-light"
+         style="font-size:0.8rem;">
+        <i class="bi bi-arrow-left me-1"></i>All Labs
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="container pb-5">
+
+  {% if form_error %}
+    <div class="alert alert-danger mb-4">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ form_error }}
+    </div>
+  {% endif %}
+
+  <div class="row g-4">
+
+    <!-- Left: lab info + options -->
+    <div class="col-lg-4">
+
+      <!-- Reference ranges card -->
+      <div class="card p-4 mb-4"
+           style="border-left:4px solid var(--nhanes-teal);">
+        <p class="detail-section-title">
+          <i class="bi bi-rulers me-1"></i>Reference Ranges
+        </p>
+        <table class="table table-sm mb-0" style="font-size:0.83rem;">
+          <thead>
+            <tr style="font-size:0.7rem;color:var(--nhanes-muted);">
+              <th></th><th>Low</th><th>High</th><th>Units</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><i class="bi bi-gender-male" style="color:#1d4ed8;"></i> Male</td>
+              <td class="range-pill range-m">{{ lab.crr_m_low }}</td>
+              <td class="range-pill range-m">{{ lab.crr_m_high }}</td>
+              <td style="color:var(--nhanes-muted);">{{ lab.units }}</td>
+            </tr>
+            <tr>
+              <td><i class="bi bi-gender-female" style="color:#9d174d;"></i> Female</td>
+              <td class="range-pill range-f">{{ lab.crr_f_low }}</td>
+              <td class="range-pill range-f">{{ lab.crr_f_high }}</td>
+              <td style="color:var(--nhanes-muted);">{{ lab.units }}</td>
+            </tr>
+          </tbody>
+        </table>
+        {% if lab.source %}
+        <small class="text-muted mt-2 d-block" style="font-size:0.72rem;">
+          Source: <a href="{{ lab.source }}" target="_blank" rel="noopener">
+            Mayo Clinic Labs
+          </a>
+        </small>
+        {% endif %}
+      </div>
+
+      <!-- Analysis options -->
+      <div class="card p-4">
+        <p class="detail-section-title">
+          <i class="bi bi-sliders me-1"></i>Analysis Options
+        </p>
+        <div class="mb-3">
+          <label class="form-label" style="font-size:0.83rem;font-weight:600;">
+            Gender Filter
+          </label>
+          <select name="gender_filter" id="genderFilter"
+                  class="form-select form-select-sm">
+            <option value="both" selected>Both (gender-specific bounds)</option>
+            <option value="male">Male only</option>
+            <option value="female">Female only</option>
+          </select>
+          <small class="text-muted" style="font-size:0.72rem;">
+            "Both" applies male bounds to male rows and female bounds to female rows.
+          </small>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: independent variable selection -->
+    <div class="col-lg-8">
+      <form method="post" action="{% url 'correlate_run' lab.column_name %}"
+            id="setupForm">
+        {% csrf_token %}
+        <input type="hidden" name="gender_filter" id="genderFilterHidden" value="both">
+
+        <div class="card p-4">
+          <p class="detail-section-title">
+            <i class="bi bi-list-check me-1"></i>Independent Variables
+            <small class="fw-normal text-muted ms-1" style="text-transform:none;letter-spacing:0;">
+              Select variables to correlate against {{ lab.column_name }} out-of-range status
+            </small>
+          </p>
+
+          <!-- Selected chips -->
+          <div id="selectedChips" class="mb-3"
+               style="min-height:36px;padding:4px;border:1px dashed var(--nhanes-border);
+                      border-radius:6px;background:#fafafa;">
+            {% for var in library_vars %}
+            <span class="var-chip" id="chip-{{ var.column_name }}"
+                  data-col="{{ var.column_name }}"
+                  data-type="{{ var.var_type }}">
+              <span class="var-code" style="font-size:0.72rem;">{{ var.column_name }}</span>
+              <span class="chip-type">{{ var.var_type }}</span>
+              <button type="button" class="remove-chip"
+                      onclick="removeChip('{{ var.column_name }}')">×</button>
+              <input type="hidden" name="indep_cols" value="{{ var.column_name }}">
+            </span>
+            {% empty %}
+            <span id="emptyMsg" style="font-size:0.78rem;color:#9ca3af;padding:4px 8px;">
+              No variables selected yet. Add from your library below or search.
+            </span>
+            {% endfor %}
+          </div>
+
+          <!-- Search to add more -->
+          <div class="position-relative mb-3">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text">
+                <i class="bi bi-search"></i>
+              </span>
+              <input type="text" id="varSearchInput"
+                     class="form-control"
+                     placeholder="Search artifact to add more variables..."
+                     autocomplete="off">
+            </div>
+            <div id="searchResults" style="display:none;"></div>
+          </div>
+
+          <!-- Library quick-add -->
+          {% if library_vars %}
+          <div class="mb-2">
+            <small class="text-muted" style="font-size:0.75rem;">
+              <i class="bi bi-bookmark-fill me-1" style="color:var(--nhanes-teal);"></i>
+              Library variables are pre-selected above.
+              <button type="button" class="btn btn-link btn-sm p-0"
+                      style="font-size:0.75rem;" onclick="clearAll()">
+                Clear all
+              </button>
+              &nbsp;/&nbsp;
+              <button type="button" class="btn btn-link btn-sm p-0"
+                      style="font-size:0.75rem;" onclick="restoreLibrary()">
+                Restore library
+              </button>
+            </small>
+          </div>
+          {% endif %}
+
+        </div>
+
+        <!-- Run button -->
+        <div class="d-flex justify-content-end mt-4">
+          <button type="submit"
+                  class="btn"
+                  style="background:var(--nhanes-accent);color:#fff;
+                         font-weight:600;padding:10px 28px;border-radius:8px;">
+            <i class="bi bi-play-fill me-2"></i>Run Correlation Analysis
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const LIBRARY_VARS = {{ library_vars|tojson }};
+const SELECTED     = {};   // column_name -> { column_name, sas_label, var_type }
+
+// Pre-populate from library
+LIBRARY_VARS.forEach(v => {
+  SELECTED[v.column_name] = v;
+});
+
+function renderChips() {
+  const container  = document.getElementById('selectedChips');
+  const emptyMsg   = document.getElementById('emptyMsg');
+  const keys       = Object.keys(SELECTED);
+
+  if (keys.length === 0) {
+    container.innerHTML =
+      '<span id="emptyMsg" style="font-size:0.78rem;color:#9ca3af;padding:4px 8px;">' +
+      'No variables selected. Search or add from library.</span>';
+    return;
+  }
+
+  container.innerHTML = keys.map(col => {
+    const v = SELECTED[col];
+    return `<span class="var-chip" id="chip-${col}" data-col="${col}">
+      <span class="var-code" style="font-size:0.72rem;">${col}</span>
+      <span class="chip-type">${v.var_type || ''}</span>
+      <button type="button" class="remove-chip" onclick="removeChip('${col}')">×</button>
+      <input type="hidden" name="indep_cols" value="${col}">
+    </span>`;
+  }).join('');
+}
+
+function removeChip(col) {
+  delete SELECTED[col];
+  renderChips();
+}
+
+function clearAll() {
+  Object.keys(SELECTED).forEach(k => delete SELECTED[k]);
+  renderChips();
+}
+
+function restoreLibrary() {
+  LIBRARY_VARS.forEach(v => { SELECTED[v.column_name] = v; });
+  renderChips();
+}
+
+function addVar(col, sas_label, var_type) {
+  SELECTED[col] = { column_name: col, sas_label, var_type };
+  renderChips();
+  document.getElementById('varSearchInput').value = '';
+  document.getElementById('searchResults').style.display = 'none';
+}
+
+// Search
+let searchTimer;
+document.getElementById('varSearchInput').addEventListener('input', function () {
+  clearTimeout(searchTimer);
+  const q = this.value.trim();
+  if (!q) {
+    document.getElementById('searchResults').style.display = 'none';
+    return;
+  }
+  searchTimer = setTimeout(() => {
+    fetch('/labs/api/search/?q=' + encodeURIComponent(q))
+    .then(r => r.json())
+    .then(data => {
+      const box = document.getElementById('searchResults');
+      if (!data.results.length) {
+        box.style.display = 'none';
+        return;
+      }
+      box.innerHTML = data.results.map(r => {
+        const already = SELECTED[r.column_name] ? ' (already added)' : '';
+        return `<div class="search-result-item"
+                     onclick="addVar('${r.column_name}', ${JSON.stringify(r.sas_label)}, '${r.var_type}')">
+          <span class="var-code" style="font-size:0.72rem;">${r.column_name}</span>
+          <span class="type-badge type-${r.var_type}" style="margin-left:4px;">${r.var_type}</span>
+          <span style="margin-left:6px;color:#374151;">${r.sas_label}</span>
+          <small style="color:#9ca3af;">${already}</small>
+        </div>`;
+      }).join('');
+      box.style.display = 'block';
+    });
+  }, 280);
+});
+
+// Close search dropdown on outside click
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('#varSearchInput') && !e.target.closest('#searchResults')) {
+    document.getElementById('searchResults').style.display = 'none';
+  }
+});
+
+// Sync gender filter hidden input before submit
+document.getElementById('genderFilter').addEventListener('change', function () {
+  document.getElementById('genderFilterHidden').value = this.value;
+});
+
+// Initial render (library vars are already in DOM from server, but re-render for JS state)
+renderChips();
+</script>
+{% endblock %}

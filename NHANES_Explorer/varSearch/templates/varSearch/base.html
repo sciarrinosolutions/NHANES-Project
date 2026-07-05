@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}NHANES Variable Explorer{% endblock %}</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+        rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+
+  <style>
+    :root {
+      --nhanes-navy:   #0d1b2a;
+      --nhanes-teal:   #00b4d8;
+      --nhanes-light:  #e8f4f8;
+      --nhanes-accent: #0077b6;
+      --nhanes-muted:  #6c757d;
+      --nhanes-border: #dee2e6;
+      --font-body:     'IBM Plex Sans', sans-serif;
+      --font-mono:     'IBM Plex Mono', monospace;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background-color: #f8fafc;
+      color: #1a2332;
+    }
+
+    /* ── Navbar ────────────────────────────────────────────────────────────── */
+    .navbar-brand {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 1.1rem;
+      letter-spacing: -0.02em;
+      color: #fff !important;
+    }
+    .navbar-brand span {
+      color: var(--nhanes-teal);
+    }
+    .navbar {
+      background-color: var(--nhanes-navy) !important;
+      border-bottom: 2px solid var(--nhanes-teal);
+    }
+    .nav-link {
+      font-size: 0.875rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      color: rgba(255,255,255,0.75) !important;
+      transition: color 0.15s;
+    }
+    .nav-link:hover, .nav-link.active {
+      color: var(--nhanes-teal) !important;
+    }
+
+    /* ── Cards ─────────────────────────────────────────────────────────────── */
+    .card {
+      border: 1px solid var(--nhanes-border);
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .card:hover {
+      box-shadow: 0 4px 16px rgba(0,119,182,0.10);
+      border-color: var(--nhanes-teal);
+    }
+
+    /* ── Variable code badge ────────────────────────────────────────────────── */
+    .var-code {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--nhanes-navy);
+      color: var(--nhanes-teal);
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Type badge ─────────────────────────────────────────────────────────── */
+    .type-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+    .type-continuous  { background: #dbeafe; color: #1d4ed8; }
+    .type-binary      { background: #dcfce7; color: #15803d; }
+    .type-ordinal     { background: #fef9c3; color: #a16207; }
+    .type-categorical { background: #fce7f3; color: #9d174d; }
+    .type-identifier  { background: #f3f4f6; color: #6b7280; }
+
+    /* ── Score bar ──────────────────────────────────────────────────────────── */
+    .score-bar {
+      height: 3px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, var(--nhanes-teal), var(--nhanes-accent));
+    }
+
+    /* ── Favorite button ────────────────────────────────────────────────────── */
+    .btn-fav {
+      border: none;
+      background: none;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: transform 0.15s;
+    }
+    .btn-fav:hover { transform: scale(1.2); }
+    .btn-fav.active { color: #f59e0b; }
+    .btn-fav:not(.active) { color: #9ca3af; }
+
+    /* ── Search input ───────────────────────────────────────────────────────── */
+    .search-input {
+      font-family: var(--font-body);
+      font-size: 1rem;
+      border: 2px solid var(--nhanes-border);
+      border-radius: 8px 0 0 8px;
+      padding: 10px 16px;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus {
+      border-color: var(--nhanes-teal);
+      box-shadow: none;
+      outline: none;
+    }
+    .btn-search {
+      background: var(--nhanes-accent);
+      color: #fff;
+      border: none;
+      border-radius: 0 8px 8px 0;
+      padding: 10px 20px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      transition: background 0.2s;
+    }
+    .btn-search:hover { background: var(--nhanes-navy); color: #fff; }
+
+    /* ── Detail page ────────────────────────────────────────────────────────── */
+    .detail-section-title {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--nhanes-muted);
+      margin-bottom: 6px;
+    }
+    .detail-value {
+      font-size: 0.9rem;
+      color: #1a2332;
+    }
+    .kv-table td:first-child {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--nhanes-accent);
+      white-space: nowrap;
+      padding-right: 16px;
+      width: 1%;
+    }
+    .kv-table td:last-child {
+      font-size: 0.85rem;
+    }
+
+    /* ── Hero strip ─────────────────────────────────────────────────────────── */
+    .page-hero {
+      background: var(--nhanes-navy);
+      color: #fff;
+      padding: 32px 0 24px;
+      margin-bottom: 32px;
+      border-bottom: 2px solid var(--nhanes-teal);
+    }
+    .page-hero h1 {
+      font-family: var(--font-mono);
+      font-size: 1.4rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+    .page-hero .subtitle {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.55);
+      margin-top: 4px;
+    }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg">
+  <div class="container">
+    <a class="navbar-brand" href="{% url 'search' %}">
+      NHANES<span>.</span>explorer
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+            data-bs-target="#navMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav ms-auto gap-2">
+        <li class="nav-item">
+          <a class="nav-link {% block nav_search %}{% endblock %}"
+             href="{% url 'search' %}">
+            <i class="bi bi-search me-1"></i>Search
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% block nav_library %}{% endblock %}"
+             href="{% url 'library' %}">
+            <i class="bi bi-bookmark-star me-1"></i>Library
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% block nav_labs %}{% endblock %}"
+             href="{% url 'lab_list' %}">
+            <i class="bi bi-clipboard2-pulse me-1"></i>Labs
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+{% block content %}{% endblock %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// ── AJAX favorite toggle ────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.btn-fav[data-column]').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      var col  = btn.dataset.column;
+      var csrf = btn.dataset.csrf;
+      fetch('/favorite/' + col + '/toggle/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken'     : csrf,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.is_favorite) {
+          btn.classList.add('active');
+          btn.title = 'Remove from library';
+        } else {
+          btn.classList.remove('active');
+          btn.title = 'Add to library';
+        }
+      });
+    });
+  });
+});
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

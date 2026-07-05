@@ -1,0 +1,23 @@
+Variable Code,NHANES File,CRR_M_Low,CRR_M_High,CRR_F_Low,CRR_F_High,Units,Panel,Source
+LBXGH,GHB_L.xpt,4.00,5.60,4.00,5.60,%,Metabolic,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXIN,INS_L.xpt,3.00,25.00,3.00,25.00,mcIU/mL,Metabolic,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXGLU,GLU_L.xpt,70.00,99.00,70.00,99.00,mg/dL,Metabolic,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXSUA,BIOPRO_L.xpt,3.50,8.00,2.50,6.10,mg/dL,Kidney,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXTLG,TRIGLY_L.xpt,0.00,199.00,0.00,199.00,mg/dL,Lipid,https://www.mayocliniclabs.com/test-catalog/overview/
+LBDLDLN,TRIGLY_L.xpt,0.00,159.00,0.00,159.00,mg/dL,Lipid,https://www.mayocliniclabs.com/test-catalog/overview/
+LBDHDD,HDL_L.xpt,40.00,999.00,50.00,999.00,mg/dL,Lipid,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXTC,TCHOL_L.xpt,0.00,199.00,0.00,199.00,mg/dL,Lipid,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXHGB,CBC_L.xpt,13.20,16.60,11.60,15.00,g/dL,CBC,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXHCT,CBC_L.xpt,38.30,48.60,35.50,44.90,%,CBC,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXWBCSI,CBC_L.xpt,3.40,9.60,3.40,9.60,1000 cells/uL,CBC,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXSBU,BIOPRO_L.xpt,8.00,24.00,6.00,21.00,mg/dL,Kidney,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXSCR,BIOPRO_L.xpt,0.74,1.35,0.59,1.04,mg/dL,Kidney,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXSASSI,BIOPRO_L.xpt,8.00,48.00,8.00,43.00,IU/L,Liver,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXSATSI,BIOPRO_L.xpt,7.00,55.00,7.00,45.00,IU/L,Liver,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXSAPSI,BIOPRO_L.xpt,40.00,129.00,35.00,104.00,IU/L,Liver,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXSAL,BIOPRO_L.xpt,3.50,5.00,3.50,5.00,g/dL,Liver,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXSTB,BIOPRO_L.xpt,0.00,1.20,0.00,1.20,mg/dL,Liver,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXSGTSI,BIOPRO_L.xpt,8.00,61.00,5.00,36.00,IU/L,Liver,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXVIDMS,VID_L.xpt,50.00,125.00,50.00,125.00,nmol/L,Micronutrients,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXFER,FERTIN_L.xpt,31.00,409.00,6.00,175.00,mcg/L,Micronutrients,https://www.mayocliniclabs.com/test-catalog/overview/
+LBXHSCRP,HSCRP_L.xpt,0.00,2.00,0.00,2.00,mg/L,Inflammatory,https://www.mayocliniclabs.com/test-catalog/overview/

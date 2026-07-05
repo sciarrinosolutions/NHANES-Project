@@ -1,0 +1,104 @@
+{% comment %}
+Included by results.html.
+Variables: direction ('high' | 'low' | 'all'), results (list of dicts)
+{% endcomment %}
+
+<div class="table-responsive">
+  <table class="table results-table" style="font-size:0.83rem;">
+    <thead>
+      <tr>
+        <th data-col="0">Variable</th>
+        <th data-col="1">Description</th>
+        <th data-col="2" class="text-center">Direction</th>
+        <th data-col="3" class="text-center">Method</th>
+        <th data-col="4" class="text-center sorted-desc">Statistic</th>
+        <th data-col="5" class="text-center">p-value</th>
+        <th data-col="6" class="text-center">Sig.</th>
+        <th data-col="7">Strength</th>
+        <th data-col="8">n</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in results %}
+        {% if direction == 'all' or r.direction == direction %}
+        <tr class="{% if r.error %}has-error{% endif %}">
+
+          <td>
+            <a href="{% url 'detail' r.column_name %}" class="text-decoration-none" target="_blank">
+              <span class="var-code" style="font-size:0.72rem;">{{ r.column_name }}</span>
+            </a>
+            <div style="font-size:0.7rem;color:var(--nhanes-muted);">{{ r.var_type }}</div>
+          </td>
+
+          <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+              title="{{ r.sas_label }}">
+            {{ r.sas_label }}
+          </td>
+
+          <td class="text-center">
+            {% if r.direction == 'high' %}
+              <span class="dir-high">HIGH</span>
+            {% else %}
+              <span class="dir-low">LOW</span>
+            {% endif %}
+          </td>
+
+          <td class="text-center" style="font-family:var(--font-mono);font-size:0.72rem;color:var(--nhanes-muted);">
+            {{ r.method|default:"—" }}
+          </td>
+
+          <td class="text-center" data-val="{{ r.statistic|default:0 }}"
+              style="font-family:var(--font-mono);font-weight:600;">
+            {% if r.error %}
+              <span style="color:#9ca3af;font-size:0.75rem;">{{ r.error }}</span>
+            {% else %}
+              {% if r.statistic is not None %}
+                {% if r.direction_r == 'negative' %}
+                  <span style="color:#e63946;">{{ r.statistic }}</span>
+                {% else %}
+                  <span style="color:#0077b6;">{{ r.statistic }}</span>
+                {% endif %}
+              {% else %}
+                —
+              {% endif %}
+            {% endif %}
+          </td>
+
+          <td class="text-center" style="font-family:var(--font-mono);font-size:0.8rem;">
+            {% if r.p_value is not None %}{{ r.p_value }}{% else %}<span style="color:#9ca3af;">N/A</span>{% endif %}
+          </td>
+
+          <td class="text-center">
+            {% if r.significant %}
+              <i class="bi bi-check-circle-fill" style="color:#15803d;" title="p < 0.05"></i>
+            {% else %}
+              {% if r.p_value is not None %}
+                <i class="bi bi-dash-circle" style="color:#9ca3af;"></i>
+              {% else %}
+                <span style="color:#9ca3af;font-size:0.75rem;">—</span>
+              {% endif %}
+            {% endif %}
+          </td>
+
+          <td>
+            {% if r.strength and r.strength != 'N/A' %}
+              <span class="strength-{{ r.strength|lower|cut:' ' }}">{{ r.strength }}</span>
+            {% else %}
+              <span style="color:#9ca3af;">—</span>
+            {% endif %}
+          </td>
+
+          <td style="font-family:var(--font-mono);font-size:0.78rem;color:var(--nhanes-muted);">
+            {{ r.n }}
+          </td>
+
+        </tr>
+        {% endif %}
+      {% empty %}
+      <tr>
+        <td colspan="9" class="text-center text-muted py-4">No results for this direction.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
